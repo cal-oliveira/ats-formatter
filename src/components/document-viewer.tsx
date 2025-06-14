@@ -27,7 +27,9 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ content }) => {
           <span>Conteúdo do Documento</span>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline">Ver Completo</Button>
+              <Button variant="outline" className="cursor-pointer">
+                Ver Completo
+              </Button>
             </SheetTrigger>
             <SheetContent
               className="w-[90%] sm:w-[80%] md:w-[60%] overflow-y-auto"

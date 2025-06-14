@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,12 +11,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import DocumentViewer from "@/components/DocumentViwer";
+import DocumentViewer from "@/components/document-viewer";
+import {
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@radix-ui/react-dialog";
+import { Dialog, DialogHeader } from "@/components/ui/dialog";
+import DisclaimmerModal from "@/components/disclaimmer-modal";
 
 const Index = () => {
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false); // Estado para controlar o modal
 
   const handleFileUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,6 +47,7 @@ const Index = () => {
           setIsProcessing(false);
           return;
         }
+        setIsModalOpen(true);
       } catch (error) {
         console.error("Erro ao processar arquivo:", error);
         toast.error("Erro ao processar o arquivo. Tente novamente.");
@@ -197,18 +206,28 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-background">
+    <div
+      className={`min-h-screen p-6 flex flex-col items-center justify-center`}
+    >
+      <DisclaimmerModal open={isModalOpen} onOpenChange={setIsModalOpen} />
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8">
-          Leitor de Documentos
-        </h1>
+        <div className="flex flex-col justify-center items-center mb-8">
+          <h1 className="text-3xl font-bold text-center ">
+            Formatter de curriculo para IA
+          </h1>
+
+          <p>
+            Otimize seu currículo para ser aprovado pelos sistemas de
+            recrutamento com inteligência artificial (ATS).
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 gap-8">
           <Card>
             <CardHeader>
               <CardTitle>Upload de Documento</CardTitle>
               <CardDescription>
-                Faça upload de documentos Word ou PDF para extrair o texto.
+                Faça upload do seu currículo no formato Word ou PDF.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,13 +280,15 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle>Gerar PDF Editado</CardTitle>
                   <CardDescription>
-                    Clique no botão abaixo para gerar um novo PDF com a palavra
-                    "EDITADO" no início e fim do texto.
+                    Clique no botão abaixo para gerar seu novo currículo em PDF.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button onClick={generateEditedPdf} className="w-full">
-                    Baixar PDF Editado
+                  <Button
+                    onClick={generateEditedPdf}
+                    className="w-full cursor-pointer"
+                  >
+                    Baixar Currículo
                   </Button>
                 </CardContent>
               </Card>
