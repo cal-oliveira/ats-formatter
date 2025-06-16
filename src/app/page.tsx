@@ -302,7 +302,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <Button
-                  onClick={handleOptimizeAndDownload} // <--- CHAMA A NOVA FUNÇÃO AQUI!
+                  onClick={handleOptimizeAndDownload}
                   disabled={isProcessing}
                   className="w-full cursor-pointer"
                 >
@@ -329,7 +329,6 @@ const Index = () => {
               </CardContent>
             </Card>
           )}
-          {/* O Card de "Baixar PDF Otimizado" foi removido pois o download é automático */}
         </div>
       </div>
     </div>
