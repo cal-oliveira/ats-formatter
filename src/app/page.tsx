@@ -21,9 +21,6 @@ const Index = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [chatResponse, setChatResponse] = useState<string | null>(null);
 
-  // NOTA: handleSendMessage não será mais chamado diretamente pelo botão no JSX.
-  // Sua lógica será incorporada em handleOptimizeAndDownload.
-  // Mantenho a função separada por questões de modularidade se quiser reutilizá-la.
   const getOptimizedContentFromAI = async (
     content: string
   ): Promise<string> => {
@@ -46,15 +43,13 @@ const Index = () => {
       }
 
       const data = await response.json();
-      return data.content; // Retorna o conteúdo da IA
+      return data.content;
     } catch (err: any) {
       console.error("Erro ao otimizar currículo via API:", err);
       throw new Error("Erro ao otimizar o currículo pela IA. Tente novamente.");
     }
   };
 
-  // NOTA: generateOptimizedPdf não será mais chamado diretamente pelo botão no JSX.
-  // Sua lógica será incorporada em handleOptimizeAndDownload.
   const generatePdfFromContent = async (
     content: string,
     originalFileName: string | null
@@ -97,7 +92,6 @@ const Index = () => {
     }
   };
 
-  // NOVA FUNÇÃO: Otimiza e baixa o PDF
   const handleOptimizeAndDownload = async () => {
     if (!fileContent) {
       toast.error("Por favor, faça upload de um currículo primeiro.");
@@ -105,14 +99,12 @@ const Index = () => {
     }
 
     setIsProcessing(true);
-    setChatResponse(null); // Limpar resposta anterior para novo processamento
+    setChatResponse(null);
 
     try {
-      // 1. Otimizar o conteúdo com a IA
       const optimizedText = await getOptimizedContentFromAI(fileContent);
       setChatResponse(optimizedText); // Armazenar para visualização se desejar
 
-      // 2. Gerar e baixar o PDF com o conteúdo otimizado
       await generatePdfFromContent(optimizedText, fileName);
     } catch (error: any) {
       console.error("Erro no processo de otimização e download:", error);
@@ -131,9 +123,9 @@ const Index = () => {
 
       const fileExtension = file.name.split(".").pop()?.toLowerCase();
       setFileName(file.name);
-      setIsProcessing(true); // Inicia processamento para o upload/leitura
-      setFileContent(null); // Limpa conteúdo anterior
-      setChatResponse(null); // Limpa resposta da IA anterior
+      setIsProcessing(true);
+      setFileContent(null);
+      setChatResponse(null);
 
       try {
         if (fileExtension === "pdf") {
@@ -144,14 +136,14 @@ const Index = () => {
           toast.error(
             "Formato de arquivo não suportado. Use PDF ou Word (doc/docx)."
           );
-          setIsProcessing(false); // Reseta se formato não suportado
+          setIsProcessing(false);
           return;
         }
         setIsModalOpen(true);
       } catch (error) {
         console.error("Erro ao processar arquivo:", error);
         toast.error("Erro ao processar o arquivo. Tente novamente.");
-        setIsProcessing(false); // Reseta em caso de erro
+        setIsProcessing(false);
       }
     },
     []
@@ -161,7 +153,7 @@ const Index = () => {
     try {
       const pdfjsLib = await import("pdfjs-dist");
       pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs"; // Considerar atualizar esta URL/versão
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs"; //
 
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -180,7 +172,7 @@ const Index = () => {
       console.error("Erro ao analisar PDF:", error);
       throw error;
     } finally {
-      setIsProcessing(false); // Importante: Reseta após processamento do arquivo
+      setIsProcessing(false);
     }
   };
 
@@ -198,7 +190,7 @@ const Index = () => {
       console.error("Erro ao analisar documento Word:", error);
       throw error;
     } finally {
-      setIsProcessing(false); // Importante: Reseta após processamento do arquivo
+      setIsProcessing(false);
     }
   };
 
