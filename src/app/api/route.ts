@@ -7,7 +7,6 @@ if (!API_KEY) {
   console.error(
     "Erro: GOOGLE_API_KEY não está configurada no ambiente do servidor."
   );
-  // CORREÇÃO: Adicione 'return' aqui
   NextResponse.json(
     { error: "Configuração de API inválida no servidor." },
     { status: 500 }
