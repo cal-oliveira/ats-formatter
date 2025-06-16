@@ -2,7 +2,6 @@ import { GoogleGenerativeAI, GenerativeModel } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
 const API_KEY: string = process.env.GOOGLE_API_KEY!;
-console.log("GOOGLE_API_KEY no ambiente:", process.env.GOOGLE_API_KEY);
 
 if (!API_KEY) {
   console.error(
