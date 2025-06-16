@@ -12,19 +12,117 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import DocumentViewer from "@/components/document-viewer";
-import {
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@radix-ui/react-dialog";
-import { Dialog, DialogHeader } from "@/components/ui/dialog";
 import DisclaimmerModal from "@/components/disclaimmer-modal";
 
 const Index = () => {
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false); // Estado para controlar o modal
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [chatResponse, setChatResponse] = useState<string | null>(null);
+
+  // NOTA: handleSendMessage não será mais chamado diretamente pelo botão no JSX.
+  // Sua lógica será incorporada em handleOptimizeAndDownload.
+  // Mantenho a função separada por questões de modularidade se quiser reutilizá-la.
+  const getOptimizedContentFromAI = async (
+    content: string
+  ): Promise<string> => {
+    try {
+      const aiPrompt = `Por favor, otimize o seguinte currículo para ser aprovado por sistemas ATS. Remova informações desnecessárias,remova imagens, use palavras-chave relevantes para vagas comuns e estruture de forma clara. Não insira nada alem da informação pessoal, não diga o que voce fez, apenas mande o curriculo. Mantenha o formato de texto simples. Aqui está o currículo: \n\n${content}`;
+
+      const response = await fetch("/api", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ promptText: aiPrompt }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || `Erro HTTP! Status: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+      return data.content; // Retorna o conteúdo da IA
+    } catch (err: any) {
+      console.error("Erro ao otimizar currículo via API:", err);
+      throw new Error("Erro ao otimizar o currículo pela IA. Tente novamente.");
+    }
+  };
+
+  // NOTA: generateOptimizedPdf não será mais chamado diretamente pelo botão no JSX.
+  // Sua lógica será incorporada em handleOptimizeAndDownload.
+  const generatePdfFromContent = async (
+    content: string,
+    originalFileName: string | null
+  ) => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const pdf = new jsPDF();
+
+      const contentToPrint = `${content}`;
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      const maxWidth = pageWidth - 2 * margin;
+
+      const lines = pdf.splitTextToSize(contentToPrint, maxWidth);
+
+      let yPosition = margin;
+      const lineHeight = 7;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      lines.forEach((line: string) => {
+        if (yPosition + lineHeight > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        pdf.text(line, margin, yPosition);
+        yPosition += lineHeight;
+      });
+
+      const baseName = originalFileName
+        ? originalFileName.replace(/\.[^/.]+$/, "")
+        : "curriculo";
+      const optimizedFileName = `${baseName}_otimizado_IA.pdf`;
+
+      pdf.save(optimizedFileName);
+      toast.success("PDF otimizado gerado e baixado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao gerar PDF otimizado:", error);
+      throw new Error("Erro ao gerar o PDF otimizado. Tente novamente.");
+    }
+  };
+
+  // NOVA FUNÇÃO: Otimiza e baixa o PDF
+  const handleOptimizeAndDownload = async () => {
+    if (!fileContent) {
+      toast.error("Por favor, faça upload de um currículo primeiro.");
+      return;
+    }
+
+    setIsProcessing(true);
+    setChatResponse(null); // Limpar resposta anterior para novo processamento
+
+    try {
+      // 1. Otimizar o conteúdo com a IA
+      const optimizedText = await getOptimizedContentFromAI(fileContent);
+      setChatResponse(optimizedText); // Armazenar para visualização se desejar
+
+      // 2. Gerar e baixar o PDF com o conteúdo otimizado
+      await generatePdfFromContent(optimizedText, fileName);
+    } catch (error: any) {
+      console.error("Erro no processo de otimização e download:", error);
+      toast.error(
+        error.message || "Ocorreu um erro no processo. Tente novamente."
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleFileUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +131,9 @@ const Index = () => {
 
       const fileExtension = file.name.split(".").pop()?.toLowerCase();
       setFileName(file.name);
-      setIsProcessing(true);
+      setIsProcessing(true); // Inicia processamento para o upload/leitura
+      setFileContent(null); // Limpa conteúdo anterior
+      setChatResponse(null); // Limpa resposta da IA anterior
 
       try {
         if (fileExtension === "pdf") {
@@ -44,14 +144,14 @@ const Index = () => {
           toast.error(
             "Formato de arquivo não suportado. Use PDF ou Word (doc/docx)."
           );
-          setIsProcessing(false);
+          setIsProcessing(false); // Reseta se formato não suportado
           return;
         }
         setIsModalOpen(true);
       } catch (error) {
         console.error("Erro ao processar arquivo:", error);
         toast.error("Erro ao processar o arquivo. Tente novamente.");
-        setIsProcessing(false);
+        setIsProcessing(false); // Reseta em caso de erro
       }
     },
     []
@@ -59,82 +159,52 @@ const Index = () => {
 
   const handlePdfFile = async (file: File) => {
     try {
-      // Importar pdfjs-dist dinamicamente
       const pdfjsLib = await import("pdfjs-dist");
-
-      // Configurar worker usando JSDelivr CDN com versão específica
       pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs";
+        "https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs"; // Considerar atualizar esta URL/versão
 
-      console.log(
-        "Worker configurado:",
-        pdfjsLib.GlobalWorkerOptions.workerSrc
-      );
-
-      // Converter o arquivo para um ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-
-      console.log("Iniciando processamento do PDF...");
-
-      // Carregar o documento PDF
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-      console.log(`PDF carregado com ${pdf.numPages} páginas`);
-
       let fullText = "";
-
-      // Extrair texto de cada página
       for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        console.log(`Processando página ${pageNum}...`);
         const page = await pdf.getPage(pageNum);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
           .map((item: any) => item.str)
           .join(" ");
         fullText += pageText + "\n";
-        console.log(
-          `Página ${pageNum} processada, texto extraído: ${pageText.length} caracteres`
-        );
       }
-
-      console.log("Conteúdo completo do PDF:", fullText);
       setFileContent(fullText);
       toast.success("PDF processado com sucesso!");
     } catch (error) {
       console.error("Erro ao analisar PDF:", error);
       throw error;
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false); // Importante: Reseta após processamento do arquivo
     }
   };
 
   const handleWordFile = async (file: File) => {
     try {
-      // Converter o arquivo para um ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-
-      // Importar mammoth dinamicamente
       const mammoth = await import("mammoth");
       const result = await mammoth.default.extractRawText({
         arrayBuffer: arrayBuffer,
       });
-
       const content = result.value;
-      console.log("Conteúdo do Word:", content);
       setFileContent(content);
       toast.success("Documento Word processado com sucesso!");
     } catch (error) {
       console.error("Erro ao analisar documento Word:", error);
       throw error;
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false); // Importante: Reseta após processamento do arquivo
     }
   };
 
   const onDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-
     const file = event.dataTransfer.files[0];
     if (file) {
       const fileInput = document.getElementById(
@@ -154,57 +224,6 @@ const Index = () => {
     event.stopPropagation();
   }, []);
 
-  const generateEditedPdf = async () => {
-    if (!fileContent) return;
-
-    try {
-      // Importar jsPDF dinamicamente
-      const { jsPDF } = await import("jspdf");
-
-      // Criar novo documento PDF
-      const pdf = new jsPDF();
-
-      // Adicionar "EDITADO" no topo
-      const editedContent = `EDITADO\n\n${fileContent}\n\nEDITADO`;
-
-      // Configurar margens e largura da página
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      const maxWidth = pageWidth - 2 * margin;
-
-      // Dividir o texto em linhas que cabem na página
-      const lines = pdf.splitTextToSize(editedContent, maxWidth);
-
-      // Adicionar texto ao PDF com quebra de página automática
-      let yPosition = margin;
-      const lineHeight = 7;
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      lines.forEach((line: string) => {
-        if (yPosition + lineHeight > pageHeight - margin) {
-          pdf.addPage();
-          yPosition = margin;
-        }
-        pdf.text(line, margin, yPosition);
-        yPosition += lineHeight;
-      });
-
-      // Gerar nome do arquivo
-      const originalName = fileName
-        ? fileName.replace(/\.[^/.]+$/, "")
-        : "documento";
-      const editedFileName = `${originalName}_editado.pdf`;
-
-      // Fazer download do PDF
-      pdf.save(editedFileName);
-
-      toast.success("PDF editado gerado com sucesso!");
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      toast.error("Erro ao gerar o PDF editado. Tente novamente.");
-    }
-  };
-
   return (
     <div
       className={`min-h-screen p-6 flex flex-col items-center justify-center`}
@@ -213,7 +232,7 @@ const Index = () => {
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-col justify-center items-center mb-8">
           <h1 className="text-3xl font-bold text-center ">
-            Formatter de curriculo para IA
+            Otimizador de Currículo com IA
           </h1>
 
           <p>
@@ -223,9 +242,10 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-8">
+          {/* Card de Upload de Documento */}
           <Card>
             <CardHeader>
-              <CardTitle>Upload de Documento</CardTitle>
+              <CardTitle>Passo 1: Upload de Documento</CardTitle>
               <CardDescription>
                 Faça upload do seu currículo no formato Word ou PDF.
               </CardDescription>
@@ -244,7 +264,7 @@ const Index = () => {
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                {isProcessing ? (
+                {isProcessing && !chatResponse ? ( // isProcessing para o upload/leitura local
                   <div>
                     <p className="text-lg font-medium mb-2">
                       Processando arquivo...
@@ -273,27 +293,51 @@ const Index = () => {
             </CardFooter>
           </Card>
 
-          {fileContent && (
-            <>
-              <DocumentViewer content={fileContent} />
-              <Card>
-                <CardHeader>
-                  <CardTitle>Gerar PDF Editado</CardTitle>
-                  <CardDescription>
-                    Clique no botão abaixo para gerar seu novo currículo em PDF.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    onClick={generateEditedPdf}
-                    className="w-full cursor-pointer"
-                  >
-                    Baixar Currículo
-                  </Button>
-                </CardContent>
-              </Card>
-            </>
+          {/* Visualizador do Conteúdo Original (se houver e não houver resposta da IA ainda) */}
+          {fileContent && !chatResponse && (
+            <DocumentViewer content={fileContent} />
           )}
+
+          {/* Card para Otimizar Currículo (aparece após o upload e antes da resposta da IA) */}
+          {fileContent && !chatResponse && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Passo 2: Otimizar e Baixar</CardTitle>
+                <CardDescription>
+                  Clique para otimizar seu currículo com IA e baixar o PDF
+                  automaticamente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={handleOptimizeAndDownload} // <--- CHAMA A NOVA FUNÇÃO AQUI!
+                  disabled={isProcessing}
+                  className="w-full cursor-pointer"
+                >
+                  {isProcessing
+                    ? "Otimizando e Gerando PDF..."
+                    : "Otimizar Currículo com IA"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Visualizador do Conteúdo Otimizado pela IA (se houver chatResponse) */}
+          {chatResponse && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Passo 3: Currículo Otimizado pela IA</CardTitle>
+                <CardDescription>
+                  Este é o conteúdo do seu currículo otimizado. O download foi
+                  iniciado automaticamente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DocumentViewer content={chatResponse} />
+              </CardContent>
+            </Card>
+          )}
+          {/* O Card de "Baixar PDF Otimizado" foi removido pois o download é automático */}
         </div>
       </div>
     </div>
