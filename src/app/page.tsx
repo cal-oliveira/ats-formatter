@@ -100,7 +100,7 @@ const Index = () => {
     }
 
     event({
-      action: "click_button",
+      action: "clicks",
       category: "engagement",
       label: "Clique no botão de Otimizar e Baixar",
     });
