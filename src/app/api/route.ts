@@ -20,7 +20,6 @@ const model: GenerativeModel = genAI.getGenerativeModel({
 
 export async function POST(request: NextRequest) {
   try {
-    // Pega o corpo da requisição JSON (que virá do seu frontend)
     const { promptText } = await request.json();
 
     if (!promptText || typeof promptText !== "string") {
@@ -30,15 +29,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Chama a Gemini API de forma segura no servidor
     const result = await model.generateContent(promptText);
     const generatedContent = result.response.text();
 
-    // Retorna a resposta da Gemini para o seu frontend
     return NextResponse.json({ content: generatedContent });
   } catch (error) {
     console.error("Erro ao chamar a Gemini API via Route Handler:", error);
-    // Retorna uma mensagem de erro genérica para o cliente por segurança
     return NextResponse.json(
       { error: "Ocorreu um erro ao processar sua requisição." },
       { status: 500 }
@@ -46,7 +42,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Você pode adicionar um GET handler também, se necessário
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     message: "Este é um endpoint para gerar conteúdo com POST.",
