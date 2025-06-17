@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import DocumentViewer from "@/components/document-viewer";
 import DisclaimmerModal from "@/components/disclaimmer-modal";
+import { event } from "@/services/gtag";
 
 const Index = () => {
   const [fileContent, setFileContent] = useState<string | null>(null);
@@ -97,6 +98,12 @@ const Index = () => {
       toast.error("Por favor, faça upload de um currículo primeiro.");
       return;
     }
+
+    event({
+      action: "click_button",
+      category: "engagement",
+      label: "Clique no botão de Otimizar e Baixar",
+    });
 
     setIsProcessing(true);
     setChatResponse(null);
