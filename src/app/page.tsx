@@ -26,7 +26,7 @@ const Index = () => {
     content: string
   ): Promise<string> => {
     try {
-      const aiPrompt = `Por favor, otimize o seguinte currículo para ser aprovado por sistemas ATS. Remova informações desnecessárias,remova imagens, use palavras-chave relevantes para vagas comuns e estruture de forma clara. Não insira nada alem da informação pessoal, não diga o que voce fez, apenas mande o curriculo. Mantenha o formato de texto simples. Aqui está o currículo: \n\n${content}`;
+      const aiPrompt = `Por favor, otimize o seguinte currículo para ser aprovado por sistemas ATS. Remova informações desnecessárias,remova imagens, use palavras-chave relevantes para vagas comuns e estruture de forma clara. Não insira nada alem da informação pessoal, não diga o que voce fez, não insira caracteres como "*",apenas mande o curriculo. Mantenha o formato de texto simples. Aqui está o currículo: \n\n${content}`;
 
       const response = await fetch("/api", {
         method: "POST",
