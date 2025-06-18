@@ -225,7 +225,7 @@ const Index = () => {
 
   return (
     <div
-      className={`min-h-screen p-6 flex flex-col items-center justify-center`}
+      className={`min-h-[90vh] p-6 flex flex-col items-center justify-center`}
     >
       <DisclaimmerModal open={isModalOpen} onOpenChange={setIsModalOpen} />
       <div className="max-w-4xl mx-auto">
